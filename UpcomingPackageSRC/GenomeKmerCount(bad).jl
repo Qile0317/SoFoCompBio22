@@ -1,8 +1,4 @@
-```AllReaderKCount has lots of methods and i didnt wanna clutter up ApproMatch.jl so they are here.
-of course it has dependency to the other scripts.
-SCripts should be loaded in the order of:
-
-ExactMatch.jl -> ApproxMatch.jl -> AllReaderKCount.jl
+```Has dependencies in old scripts and also is incredibly slow. Just an old proof of concept
 ```
 using BioSequences, FASTX
 

@@ -116,7 +116,7 @@ FASTX.FASTA.seqlen(firstr) # 0.000001 seconds
 function length(reader::FASTX.FASTA.Reader)
     len = 0
     for record in reader
-        len += FASTX>FASTA.seqlen(record)
+        len += FASTX.FASTA.seqlen(record)
     end
     return len
 end

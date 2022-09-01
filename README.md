@@ -15,4 +15,4 @@ If you miraculously came here from my physical copy of my research report, hi! H
 # Acknowledgements
 Massive thanks to my amazing supervisor Benjamin Murrell who was very dedicated, patient, educative, kind, funny, .. the list goes on. Allround amazing person. 
 
-Also the organizers of SoFo: Gerald McInerney, Claudia Kutter, among others and the institute for the generous stipend of 3000kr and lots of free snacks and unlimited access to the BioMedicum at KI solna.
+Also the organizers of SoFo: Gerald McInerney, Claudia Kutter, among others and the institute for a generous stipend and lots of free snacks and unlimited access to the BioMedicum at KI solna.

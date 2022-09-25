@@ -10,60 +10,9 @@
 
 using BioSequences, FASTX, Plots, Distances
 
-#note: reference generation has dependencies to the other scripts.
-
-```
-Pre-generation exploratory analysis
-1. N percent
-2. average length, Sd, and plot
-(Im gonna try combinding these functions into 1 step and have Ns plotted on the bar.)
-```
-#N percentage. You should inspect the quality of the reference before using it. Ideally as close to 0 as possible.
-function percentN(seq::LongSequence{DNAAlphabet{4}})
-    allbp = length(seq)
-    ncount = 0
-    start = 1
-    rg = findfirst(ExactSearchQuery(dna"N"), view(seq, start: length(seq)))
-    while !isnothing(rg)
-        ncount +=1
-        start += last(rg)
-        rg = findfirst(ExactSearchQuery(dna"N"), view(seq, start: length(seq)))
-    end
-    return ncount/allbp
-end
-
-function percentN(seq::FASTX.FASTA.Record)
-    seq = FASTA.sequence(seq)
-    percentN(seq)
-end
-
-function percentN(collection::FASTX.FASTA.Reader)
-    #remember to run the length in ExactMatch first!
-    allbp = length(collection)
-    ncount = 0
-    for seq in collection
-        seq = FASTA.sequence(seq)
-        start = 1
-        rg = findfirst(ExactSearchQuery(dna"N"), view(seq, start: length(seq)))
-        while !isnothing(rg)
-            ncount +=1
-            start += last(rg)
-            rg = findfirst(ExactSearchQuery(dna"N"), view(seq, start: length(seq)))
-        end
-    end
-    return ncount/allbp
-    close(reader)
-end
-
-function percentN(path::String)
-    reader = open(FASTA.Reader, path)
-    percentN(reader)
-end
-
+#note: reference generation has dependencies to the other sripts.
 #In the future I can create fake test data to test this function but its pretty simple and I think it works.
 #the following functions are from SimpleExplore.jl
-
-#avfRecLen is from simpleExplore.jl
 
 function genRef(k::Int64, path::String, kmerDict::Dict{LongSequence{DNAAlphabet{4}}, Int64})
     reader = open(FASTA.Reader,path)
@@ -98,34 +47,14 @@ sixMerDict = genKmers(6)
 V3vec = dictToVec(IMGTRef)
 plot(V3vec)
 
+@time V3NRef = genRef(6,AlpacaV,genKmers(6,withN=true)) #new genkmer with N
+refPlot(V3NRef)
+
 plot(IMGTvec,label = nothing)
 title!("Average 6-mer frequency from IMGT Alpaca V genes")
 xlabel!("All Unique 6-mers")
 ylabel!("Average 6mer count from IMGT reference")
 #IT WORKED!!!!!
-
-function refPlot(k::Int64, referece::Vector{Float64},nonzero::Bool = false)
-    if nonzero == false
-        plot(collect(1:1:length(referece)),referece,label=nothing)
-        xlabel!(string("All Unique ",k,"-mers"))
-        ylabel!("Average counts")
-        title!(string("Average ",k,"-mer distribution in the reference"))
-    elseif nonzero == true
-        v = Int64[]
-        for i in referece
-            if i == 0.0
-                push!(v,0)
-            else
-                push!(v,1)
-            end
-        end
-        scatter(v,label=nothing)
-        xlabel!(string("All Unique ",k,"-mers"))
-        ylabel!("occurence")
-        title!(string("all ",k,"-mer occurences in the average of the reference"))
-
-    end
-end
 
 refPlot(6,IMGTvec,true)
 refPlot(6,IMGTvec)
@@ -150,7 +79,6 @@ avgRecLen(V3r)
 refPlot(6, V3refvec)
 
 ##
-
 A81 = "C:/Users/lu_41/Desktop/Sofo Prok/VgeneData/genBank/A81.fasta"
 A91 = "C:/Users/lu_41/Desktop/Sofo Prok/VgeneData/genBank/A91.fasta"
 J71 = "C:/Users/lu_41/Desktop/Sofo Prok/VgeneData/genBank/J71.fasta"

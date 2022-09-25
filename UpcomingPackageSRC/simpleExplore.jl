@@ -1,38 +1,97 @@
-#Run this script before everything else. Ignore the errors since its just the hashtags. Or just spam shift+enter
-#this is just a few functions that slightly help with exploring the .fna file and getting kmer spectra (slow and useless)
-
+"""
+Run this script before everything else. Ignore the errors since its just the hashtags. Or just spam shift+enter
+These functions are the essential dependencies for other functions and algorithms, especially genKmers()
+"""
 #remember to have this vers of ngsu:  Pkg.add(PackageSpec(name="NextGenSeqUtils", rev="Missing-LongCharSeq-fix", url = "https://github.com/MurrellGroup/NextGenSeqUtils.jl.git"))
 
 #module SimpleExplore
-
 #export seqLenV, avgSeqLen,recordCount,avgRecLen, seqMode, seqSd, flipDict, dictToVec,convertSeq, querySplit, kmerEucDist
 
-using Plots, BioSequences,FASTX, NextGenSeqUtils, WebBlast, Distances #PyPlot messes with soem stuff sometimes
+using Plots, BioSequences,FASTX, NextGenSeqUtils, WebBlast, Distances, Random, DelimitedFiles #PyPlot messes with soem stuff sometimes
 using CSV, DataFrames, Statistics, ProgressMeter, StringDistances, SeqUMAP, StatsBase, DelimitedFiles, StatsPlots
-
-import Base.length
+#import Base.length
 
 #This is also in ExactMatch.jl
-function length(reader::FASTX.FASTA.Reader)
-    len = 0
-    for record in reader
-        len += FASTX.FASTA.seqlen(record)
-    end
-    return len
-end
+#function length(reader::FASTX.FASTA.Reader)
+    #len = 0
+    #for record in reader
+    #    len += FASTX.FASTA.seqlen(record)
+    #end
+    #return len
+#end
 
-#all nessecary genomic data:
+#doesnt work lol
+#function rand(d::Dict, rng::AbstractRNG = Xoshiro)
+#        isempty(d) && throw(ArugmentError("dictionary must be non-empty"))
+#        n = length(d.keys)
+#        while true
+#                i = rand(rng,1:n)
+#                !isdefined(d.keys,i) && continue
+#                return d.keys[i],d.vals[i]
+#        end
+#end
+
+#all nessecary genomic testing data:
 VicPac = "C:/Users/lu_41/Desktop/Sofo Prok/VicPac32.fna"
+fVP = (first(open(FASTA.Reader,VicPac)))
 fVicPac = FASTA.sequence((first(open(FASTA.Reader,VicPac))))
 LA = "C:/Users/lu_41/Desktop/Sofo Prok/genbank_pull_lama_and_alpaca.fasta"
-reader = open(FASTA.Reader,LA) #has 3 records
-sg = dna""
-for record in reader
-    sg = sg*FASTA.sequence(record)
-end
-close(reader)
+(reader)
 V3 = "C:/Users/lu_41/Desktop/Sofo Prok/VgeneData/final/V3.fasta"
 AlpacaV = "C:/Users/lu_41/Desktop/Sofo Prok/VgeneData/AlpacaV.fasta"
+LA = "C:/Users/lu_41/Desktop/Sofo Prok/genbank_pull_lama_and_alpaca.fasta"
+V3 = "C:/Users/lu_41/Desktop/Sofo Prok/VgeneData/final/V3.fasta"
+Merged25 = "C:/Users/lu_41/Desktop/Sofo Prok/VgeneData/Sequencer/Merged/BEN-25_S23_L001.vsearch_Merged.fastq"
+
+"""
+systematic Kmer generation into dictionary：Do at start of session. It matches each kmer to a unique index.
+"""
+function genKmers(k::Int64, Dictionary::Bool = true; withN::Bool = false, cumulative::Bool = false) #O(4^k) no way around it im pretty sure.
+    if withN == false
+        bases = [dna"A"d, dna"C"d, dna"T"d, dna"G"d]
+    else
+        bases = [dna"A"d, dna"C"d, dna"T"d, dna"G"d, dna"N"d]
+    end
+    last = [dna""d]
+    curr = LongSequence{DNAAlphabet{4}}[]
+    if Dictionary == false
+        for i in 1:k
+            for b in bases
+                for l in last
+                    push!(curr,l*b)
+                end
+            end
+            last = copy(curr)
+            curr= LongSequence{DNAAlphabet{4}}[]
+        end
+        return last
+    elseif Dictionary == true
+        kmers = Dict{LongSequence{DNAAlphabet{4}}, Int64}()
+        index = 0
+        for i in 1:k
+            for b in bases
+                for l in last
+                    push!(curr,l*b)
+                    if !cumulative
+                        if length(l*b) == k #might speed up by a few nanosecs if I keep a count then
+                            index += 1
+                            kmers[l*b] = index
+                        end
+                    else
+                        index += 1
+                        kmers[l*b] = index
+                    end
+                end
+            end
+            last = copy(curr)
+            curr= LongSequence{DNAAlphabet{4}}[]
+        end
+        return kmers
+    end
+end
+
+@time sixMerDict = genKmers(6) #0.001232 seconds (30.10 k allocations: 1.923 MiB)
+@time sixMerNDict = genKmers(6, withN=true)
 
 #Functions to do with lengths and counts of sequences/assemblies: (work in progress)
 function seqLenV(reader::FASTX.FASTA.Reader{})
@@ -70,25 +129,41 @@ function recordCount(path::String)
     return c
 end
 
-
 #BIG PROBLEM: I THINK DOING OPEN(FASTA.READER) DOESNT WORK IN FUNCTIONS.
 
-function avgRecLen(reader::FASTX.FASTA.Reader)
-    reader = open(FASTA.Reader, AlpacaV)
+#get the rounded average length
+function avgRecLen(reader::FASTX.FASTA.Reader; rnd::Bool = false)
     Alen = 0
     for record in reader
-        Alen += FASTX.FASTA.seqlen(record)
+        @show Alen += FASTX.FASTA.seqlen(record)
     end
-    return Int64(round((Alen)/(recordCount(open(FASTA.Reader,AlpacaV)))))
+    if rnd
+        reader = open(FASTA.Reader, path)
+        d = recordCount(reader)
+        return Int64(round(Alen/d))
+    else
+        reader = open(FASTA.Reader, path)
+        d = recordCount(AlpacaV)
+        return Alen/d
+    end
 end
 
-function avgRecLen(path::String)
+function avgRecLen(path::String; rnd::Bool = false)
     reader = open(FASTA.Reader, path)
     Alen = 0
     for record in reader
-        Alen += FASTX.FASTA.seqlen(record)
+        @show Alen += FASTX.FASTA.seqlen(record)
     end
-    return (Alen)/recordCount(open(FASTA.Reader,AlpacaV))
+    if rnd
+        reader = open(FASTA.Reader, path)
+        d = recordCount(reader)
+        a = Alen/d
+        return Int64(round(a))
+    else
+        reader = open(FASTA.Reader, path)
+        d = recordCount(AlpacaV)
+        return Alen/d
+    end
 end
 
 function seqMode(lengths)
@@ -123,11 +198,11 @@ end
 
 #kmer to interger and the reverse. Much more methods are possible (e.g. removing need to dictionary) but ill implement those later.
 # need to do: dict vec, vec vec, vec dict methods.
-function convertSeq(Counts::Dict{LongSequence{DNAAlphabet{4}},Int64}, KmerDict::Dict{LongSequence{DNAAlphabet{4}},Int64})
+function convertSeq(Counts::Dict{LongSequence{DNAAlphabet{4}},Int64}, KD::Dict{LongSequence{DNAAlphabet{4}},Int64})
     ans = Dict{Int64,Int64}()
     for i in Counts
         i = first(i)
-        ans[KmerDict[i]] = Counts[i]
+        ans[KD[i]] = Counts[i]
     end
     return ans
 end
@@ -151,11 +226,9 @@ function convertSeq(IMGTref::Dict{LongSequence{DNAAlphabet{4}},Float64}, KmerDic
     return ans
 end
 
-
 #function to convert kmerdict to vector while preserving order. More methods can be added later.
 function dictToVec(KmerDict::Dict{Int64, Int64})
     ans = Int64[]
-    k = length(first(first(KmerDict)))
     for i in 1:length(KmerDict)
         push!(ans, KmerDict[i])
     end
@@ -164,24 +237,82 @@ end
 
 function dictToVec(KmerDict::Dict{Int64, Float64})
     ans = Float64[]
-    k = length(first(first(KmerDict)))
     for i in 1:length(KmerDict)
         push!(ans, KmerDict[i])
     end
     return ans
 end
 
-#In testing, ORder IS PRESERVED!
-
+#In testing, ORder IS PRESERVED! But do not use. its not the kmer dict order. cvDicVec should be used
+#also might be useful to rename cvDicVec to just KFV() for kmer frequency vector.
 function dictToVec(KmerDict::Dict{LongSequence{DNAAlphabet{4}}, Float64})
     ans = Float64[]
-    k = length(first(first(KmerDict)))
     for i in KmerDict
         push!(ans, KmerDict[first(i)])
     end
     return ans
 end
 
+#nice function to sum up 2 common functions convert to seq and dict to vec
+function cvDicVec(maindict::Dict{LongSequence{DNAAlphabet{4}}, Float64}, KD::Dict{LongSequence{DNAAlphabet{4}}, Int64})
+    return dictToVec(convertSeq(maindict,KD))
+end
+
+#renamed cvDicVec to its actual purpose of dictionary conversion to KFV
+function kfv(maindict::Dict{LongSequence{DNAAlphabet{4}}, Float64}, KD::Dict{LongSequence{DNAAlphabet{4}}, Int64})
+    return cvDicVec(maindict, KD)
+end
+
+function refPlot(k::Int64, referece::Vector{Float64}; nonzero::Bool = false)
+    if nonzero == false
+        plot(collect(1:1:length(referece)),referece,label=nothing)
+        xlabel!(string("All Unique ",k,"-mers"))
+        ylabel!("Average counts")
+        title!(string("Average ",k,"-mer distribution in the reference"))
+    elseif nonzero == true
+        v = Int64[]
+        for i in referece
+            if i == 0.0
+                push!(v,0)
+            else
+                push!(v,1)
+            end
+        end
+        scatter(v,label=nothing)
+        xlabel!(string("All Unique ",k,"-mers"))
+        ylabel!("occurence")
+        title!(string("all ",k,"-mer occurences in the average of the reference"))
+
+    end
+end
+
+function refPlot(referece::Dict{LongSequence{DNAAlphabet{4}}, Float64}; nonzero::Bool = false, k::Int64 = nothing)
+    if isnothing(k)
+        k = length(first(first(V3Ref)))
+    end
+    referece = dictToVec(referece)
+    if nonzero == false
+        plot(collect(1:1:length(referece)),referece,label=nothing)
+        xlabel!(string("All Unique ",k,"-mers"))
+        ylabel!("Average counts")
+        title!(string("Average ",k,"-mer distribution in the reference"))
+    elseif nonzero == true
+        v = Int64[]
+        for i in referece
+            if i == 0.0
+                push!(v,0)
+            else
+                push!(v,1)
+            end
+        end
+        scatter(v,label=nothing)
+        xlabel!(string("All Unique ",k,"-mers"))
+        ylabel!("occurence")
+        title!(string("all ",k,"-mer occurences in the average of the reference"))
+    end
+end
+
+###### misc ##########
 
 #Splitting a sequence into constituent kmers in O(n) time:
 #bens pcakage also had something like this idk if its faster
@@ -292,10 +423,6 @@ function kmerSpectra(k::Int64, KCDict::Dict{LongSequence{DNAAlphabet{4}},Int64},
     ylabel!("count")
 end
 
-#vkmerSpectra(6,Vp6k)
-#kmerSpectra(6,fc)
-#end
-
 function oldKmerSpectra(k::Int64, KCDict::Dict{LongSequence{DNAAlphabet{4}},Int64},typ::String="bar")
     ans = Dict{Int64,Int64}()
     @showprogress "initializing frequency array..." for key in KCDict
@@ -373,4 +500,52 @@ function howManySeq(reader::FASTX.FASTQ.Reader, n::Int64)
         end
     end
     return string(lessthan)*" below or equal to thr, "*string(morethan)*" above thr."
+end
+
+```
+Pre-generation exploratory analysis
+1. N percent
+2. average length, Sd, and plot
+(Im gonna try combinding these functions into 1 step and have Ns plotted on the bar.)
+```
+#N percentage. You should inspect the quality of the reference before using it. Ideally as close to 0 as possible.
+function percentN(seq::LongSequence{DNAAlphabet{4}})
+    allbp = length(seq)
+    ncount = 0
+    start = 1
+    rg = findfirst(ExactSearchQuery(dna"N"), view(seq, start: length(seq)))
+    while !isnothing(rg)
+        ncount +=1
+        start += last(rg)
+        rg = findfirst(ExactSearchQuery(dna"N"), view(seq, start: length(seq)))
+    end
+    return ncount/allbp
+end
+
+function percentN(seq::FASTX.FASTA.Record)
+    seq = FASTA.sequence(seq)
+    percentN(seq)
+end
+
+function percentN(collection::FASTX.FASTA.Reader)
+    #remember to run the length in ExactMatch first!
+    allbp = length(collection)
+    ncount = 0
+    for seq in collection
+        seq = FASTA.sequence(seq)
+        start = 1
+        rg = findfirst(ExactSearchQuery(dna"N"), view(seq, start: length(seq)))
+        while !isnothing(rg)
+            ncount +=1
+            start += last(rg)
+            rg = findfirst(ExactSearchQuery(dna"N"), view(seq, start: length(seq)))
+        end
+    end
+    return ncount/allbp
+    close(reader)
+end
+
+function percentN(path::String)
+    reader = open(FASTA.Reader, path)
+    percentN(reader)
 end

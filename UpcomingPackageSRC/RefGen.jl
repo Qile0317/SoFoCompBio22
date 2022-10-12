@@ -1,85 +1,101 @@
-```TO DO
-    -> make genRefDict version
-    -> reader construction.
+#script with functions needed for reference generation. 
+"""
+genRef(k::Int64,
+       reader,
+       kmerDict::Dict{LongSequence{DNAAlphabet{4}}, Int64})
 
-    IMPORTANT: the plotting of the reference works but,
-    something with the function is wrong. the reference generated doesnt have anough counts.
+Generate the reference from a FASTA.Reader object of reference sequences and returns a dictionary of the reference.
 
-    So, THE REFERENCE GENERATION DOES NOT WORK AT THE MOMENT
-```
+reader can be a FASTA.Reader object or a string indicating the path of the fasta file.
 
-using BioSequences, FASTX, Plots, Distances
+Is the reference generation algorithm used in the GMA.
 
-#note: reference generation has dependencies to the other sripts.
-#In the future I can create fake test data to test this function but its pretty simple and I think it works.
-#the following functions are from SimpleExplore.jl
-
-function genRef(k::Int64, path::String, kmerDict::Dict{LongSequence{DNAAlphabet{4}}, Int64})
-    reader = open(FASTA.Reader,path)
+can heavily optimized but it doesn't matter too much atm but it will probably not scale too well for very long databases
+"""
+function genRef(k::Int64, reader::FASTX.FASTA.Reader, kmerDict::Dict{LongSequence{DNAAlphabet{4}}, Int64}) #; returnDict::Bool = true
+    len = recordCount(reader)
     answer = Dict{LongSequence{DNAAlphabet{4}}, Float64}()
     for key in kmerDict
-        kmer = first(key)
-        answer[kmer] = 0.0
+        answer[first(key)] = 0.0
     end
     for record in reader
-        rect = kmerFreq(6,FASTA.sequence(record),kmerDict,true)
-        for key in answer
-            answer[first(key)] += rect[first(key)]
-        end
+        kmerFreq!(6,FASTA.sequence(record),answer,kmerDict)
     end
-    len = recordCount(open(FASTA.Reader,path))
     for key in answer
         answer[first(key)] /= len
     end
     return answer
 end
 
+function genRef(k::Int64, path::String, kmerDict::Dict{LongSequence{DNAAlphabet{4}}, Int64})
+    reader = open(FASTA.Reader,path)
+    genRef(k,reader,kmerDict)
+end
+
+export genRef
+
+"""
+findthr(refseqs::Union{FASTX.FASTA.Reader, String},
+        refKFV::Dict{LongSequence{DNAAlphabet{4}}, Float64},
+        KD::Dict{LongSequence{DNAAlphabet{4}}, Int64};
+        buff::Union{Int64,Float64} = 25)
+
+Prediction of average SED and suggesting a threshold, assuming most indexes do not match.
+
+Its extremely simple and just adds to a the SED of the first reference sequence's KFV to the actual reference KFV
+"""
+function findthr(refseqs::Union{FASTX.FASTA.Reader, String}, refKFV::Dict{LongSequence{DNAAlphabet{4}}, Float64},
+    KD::Dict{LongSequence{DNAAlphabet{4}}, Int64}; buff::Union{Int64,Float64} = 25)
+    if typeof(refseqs) == String
+        refseqs = open(FASTA.Reader, refseqs)
+    end
+    seq = FASTA.sequence(first(refseqs))
+    return Distances.sqeuclidean(kmerFreq(length(first(first(KD))),seq,KD),
+    kfv(refKFV,KD)) + buff
+end
+
+export findthr
+
+"""
+version that scans throug hthe entire reference to see the average SED for the most accurate avg SED but probably doesnt make much of a difference.
+"""
+function findavgthr(refseqs::Union{FASTX.FASTA.Reader, String}, refKFV::Dict{LongSequence{DNAAlphabet{4}}, Float64},
+    KD::Dict{LongSequence{DNAAlphabet{4}}, Int64}; buff::Union{Int64,Float64} = 25)
+    if typeof(refseqs) == String
+        refseqs = open(FASTA.Reader, refseqs)
+    end
+    SED = []
+    KFV = kfv(refKFV,KD)
+    k = length(first(first(KD)))
+    for record in refseqs
+        seq = FASTA.sequence(record)
+        push!(SED, Distances.sqeuclidean(kmerFreq(k,seq,KD),KFV))
+    end
+    return (sum(SED)/recordCount(refseqs)) + buff
+end
+
+export findavgthr
+
 AlpacaV = "C:/Users/lu_41/Desktop/Sofo Prok/VgeneData/AlpacaV.fasta"
 
-sixMerDict = genKmers(6)
+lol = genRef(6,AlpacaV,genKmers(6))
+#refPlot(lol)
+
+#findthr(AlpacaV,lol,genKmers(6)) #375.797619047619
+#findavgthr(AlpacaV,lol,genKmers(6))
 
 #remember to run ApproxMatch.jl and SimpleExplore.jl first.
-@time IMGTRef = genRef(6,AlpacaV,sixMerDict)
-IMGTvec = dictToVec(IMGTRef)
-
 sixMerDict = genKmers(6)
-@time V3Ref = genRef(6,AlpacaV,sixMerDict)
-V3vec = dictToVec(IMGTRef)
-plot(V3vec)
+V3Ref = genRef(6,AlpacaV,sixMerDict)
+#V3vec = dictToVec(IMGTRef)
+#plot(V3vec)
 
-@time V3NRef = genRef(6,AlpacaV,genKmers(6,withN=true)) #new genkmer with N
-refPlot(V3NRef)
-
-plot(IMGTvec,label = nothing)
-title!("Average 6-mer frequency from IMGT Alpaca V genes")
-xlabel!("All Unique 6-mers")
-ylabel!("Average 6mer count from IMGT reference")
-#IT WORKED!!!!!
-
-refPlot(6,IMGTvec,true)
-refPlot(6,IMGTvec)
-
-#THIS DOESNT WORK BUT THE PREVIOUS ONE WORKED.
-#I need to make a dict version thats also fast!
-
-#To test I need to construct reader object lol.
-
-#I need to learn how to explort data!!!
-close(reader)
+V3NRef = genRef(6,AlpacaV,genKmers(6,withN=true)) #new genkmer with N
+#refPlot(V3NRef)
 
 ##V3 reference
-
 V3r = open(FASTA.Reader,V3)
-
-recordCount(V3)
 
 V3ref = genRef(6,V3,sixMerDict)
 V3refvec = dictToVec(V3ref)
-avgRecLen(V3r)
-refPlot(6, V3refvec)
-
-##
-A81 = "C:/Users/lu_41/Desktop/Sofo Prok/VgeneData/genBank/A81.fasta"
-A91 = "C:/Users/lu_41/Desktop/Sofo Prok/VgeneData/genBank/A91.fasta"
-J71 = "C:/Users/lu_41/Desktop/Sofo Prok/VgeneData/genBank/J71.fasta"
-J81 = "C:/Users/lu_41/Desktop/Sofo Prok/VgeneData/genBank/J81.fasta"
+#refPlot(6,V3refvec)

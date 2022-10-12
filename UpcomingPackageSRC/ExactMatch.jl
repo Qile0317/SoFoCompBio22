@@ -1,23 +1,21 @@
-```
-Problem: Idk what happened but I think GenomeMatch is brokeen :/
-```
-
-##import packages
-using BioSequences, FASTX, Plots
-import Base.findall, Base.length
-
 ##
-reader = open(FASTA.Reader, "C:/Users/lu_41/Desktop/Sofo Prok/VicPac32.fna")
-path = "C:/Users/lu_41/Desktop/Sofo Prok/VicPac32.fna"
-firstr = first(reader)
-f = FASTA.sequence(firstr)
-q = dna"agtatcactaattatcagagaaatgcaaatcaaaactac"
-query = ExactSearchQuery(q)
-
-bseq = dna"CCCCCC"^10
+#reader = open(FASTA.Reader, "C:/Users/lu_41/Desktop/Sofo Prok/VicPac32.fna")
+#path = "C:/Users/lu_41/Desktop/Sofo Prok/VicPac32.fna"
+#firstr = first(reader)
+#f = FASTA.sequence(firstr)
+#q = dna"agtatcactaattatcagagaaatgcaaatcaaaactac"
+#query = ExactSearchQuery(q)
+#bseq = dna"CCCCCC"^10
 
 ## I can also make it return a dictionary.
-function FirstMatch(reader::FASTX.FASTA.Reader{}, query::LongSequence{DNAAlphabet{4}})
+"""
+firstMatch(reader,query)
+
+Scans through a FASTA,Reader object to find the FIRST occurence of the query(dna longsequence) and prints the results to the REPL.
+
+This function is only really needed to quickly see if there is alot of matches.
+"""
+function firstMatch(reader::FASTX.FASTA.Reader{}, query::LongSequence{DNAAlphabet{4}})
     query = ExactSearchQuery(query)
     for record in reader
         find = findfirst(query, FASTA.sequence(LongSequence{DNAAlphabet{4}}, record))
@@ -27,10 +25,9 @@ function FirstMatch(reader::FASTX.FASTA.Reader{}, query::LongSequence{DNAAlphabe
     end
 end
 
-@time FirstMatch(reader,q)
+export FirstMatch
 
-##
-function FindAll(q::ExactSearchQuery{typeof(isequal), LongSequence{DNAAlphabet{4}}}, seq::LongSequence{DNAAlphabet{4}}, answer::Vector{UnitRange})
+function FindAll(q::ExactSearchQuery{typeof(isequal), LongSequence{DNAAlphabet{4}}}, seq::LongSequence{DNAAlphabet{4}}, answer::Vector{UnitRange} = UnitRange[])
     start = 1
     rg = findfirst(q, view(seq, start: length(seq)))
     while !isnothing(rg)
@@ -44,9 +41,6 @@ function FindAll(q::ExactSearchQuery{typeof(isequal), LongSequence{DNAAlphabet{4
         return answer
     end
 end
-
-answer = UnitRange[]
-@time FindAll(query, f, answer) #0.000727 seconds (3 allocations: 160 bytes)
 
 #overlap
 function FindAllOverlap(q::ExactSearchQuery{typeof(isequal), LongSequence{DNAAlphabet{4}}}, seq::LongSequence{DNAAlphabet{4}}, answer::Vector{UnitRange})
@@ -64,13 +58,19 @@ function FindAllOverlap(q::ExactSearchQuery{typeof(isequal), LongSequence{DNAAlp
     end
 end
 
-answer = UnitRange[]
-@time FindAllOverlap(query,f,answer)
+"""
+exactMatch(query,seq,overlap)
 
-answer = UnitRange[]
-@time FindAllOverlap(query,bseq,answer)
+Finds all exact matches to a query sequence(dna longsequence) in the given genome assembly as a reader object(seq) or single sequence
 
-function RecordMatch(q::ExactSearchQuery{typeof(isequal), LongSequence{DNAAlphabet{4}}}, seq::LongSequence{DNAAlphabet{4}}, overlap::Bool)
+overlap is a boolean argument and is true by default
+
+Returns a dictionary of the identifiers of individual records it found matches in and the match locations.
+
+The algorithm is simply based on the Biosequences findfirst() function and runs quite fast through entire genomes.
+"""
+function exactMatch(query::LongSequence{DNAAlphabet{4}}, seq::LongSequence{DNAAlphabet{4}}; overlap::Bool = true)
+    q = ExactSearchQuery(query)
     answer = UnitRange[]
     if overlap==true
         FindAllOverlap(q, seq, answer)
@@ -79,13 +79,10 @@ function RecordMatch(q::ExactSearchQuery{typeof(isequal), LongSequence{DNAAlphab
     end
 end
 
-@time RecordMatch(query,f,true)
-@time RecordMatch(query,bseq,true)
-
-##
-function GenomeMatch(q::ExactSearchQuery{typeof(isequal), LongSequence{DNAAlphabet{4}}}, Reader::FASTX.FASTA.Reader{},overlap::Bool = true)
+function exactMatch(query::LongSequence{DNAAlphabet{4}}, Reader::FASTX.FASTA.Reader{}; overlap::Bool = true)
+    q = ExactSearchQuery(query)
     identify = Dict{String,Vector{UnitRange{Int64}}}()
-    for record in reader
+    for record in Reader
         seq = FASTA.sequence(record)
         RM = RecordMatch(q,seq,overlap)
         if !isnothing(RM)
@@ -100,30 +97,33 @@ function GenomeMatch(q::ExactSearchQuery{typeof(isequal), LongSequence{DNAAlphab
     close(reader)
 end
 
-function GenomeMatch(q::ExactSearchQuery{typeof(isequal), LongSequence{DNAAlphabet{4}}}, path::String, overlap::Bool=true)
-    reader = open(FASTA.Reader,path)
-    GenomeMatch(q,reader,overlap)
-end
+export exactMatch
 
-@time matchess = GenomeMatch(query, path)
+#@time matchess = GenomeMatch(query, path)
 
 ##
 #rember:
-FASTX.FASTA.seqlen(firstr) # 0.000001 seconds
+#FASTX.FASTA.seqlen(firstr) # 0.000001 seconds
 #is much faster.
 
-#and scaling to the entire assembly (once again by adding to the base method length)
-function length(reader::FASTX.FASTA.Reader)
-    len = 0
-    for record in reader
-        len += FASTX.FASTA.seqlen(record)
-    end
-    return len
-end
+"""
+cflength(reader)
 
-@time length(reader) #2.747
+function to record and store cumulative lengths of the BEGINNING of each record in a dictionary
+for example: for the reader
 
-## function to record and store cumulative lengths of the BEGINNING of each record in a dictionary
+    >firstseq
+    ATGC
+    >secondseq
+    AT
+
+the dictionary returned would be:
+
+    "firstseq"  => 4
+    "secondseq" => 6
+
+Not nessecarily in that order.
+"""
 function cflength(reader::FASTX.FASTA.Reader{})
     lengthmap = Dict{String,Int64}()
     clength = 0
@@ -137,15 +137,9 @@ function cflength(reader::FASTX.FASTA.Reader{})
     return lengthmap
 end
 
-clengths = cflength(reader)
-clengths[FASTA.identifier(firstr)] #works as intended :)
+export cflength
 
-#plotting - ver needing clength and length(reader) for speed
-```
-i was thinking to maybe change the data strucutre for the vector of unitranges to something like a hashmap
-to have constant lookup times instead of iterating through the vector and making the time complexity O(n^2)
-```
-function PlotQueryMatches(matches::Dict{String, Vector{UnitRange{Int64}}},  clengths::Dict{String,Int64}, rlength::Int64)
+function PltQueryMatches(matches::Dict{String, Vector{UnitRange{Int64}}}, rlength::Int64, clengths::Dict{String,Int64})
     x = Int64[]
     for match in matches
         currlen = clengths[first(match)]
@@ -156,28 +150,35 @@ function PlotQueryMatches(matches::Dict{String, Vector{UnitRange{Int64}}},  clen
         end
     end
     push!(x,rlength) #for a slightly more elegant graph i could maybe try find a way to extend the x axis to rlength
-    y = fill(1,length(x))
+    y = fill(1,rlength)
     scatter(x,y, title = "query match locations", label = "first position of match")
     xlabel!("matches along genome")
 end
 
-@time PlotQueryMatches(matchess,clengths,rlength)
+"""
+PlotsQueryMatches(matches, reader)
 
-#plotting - slower ver not needing any prereq except matches and reader
-function SlowerPQM(matches::Dict{String, Vector{UnitRange{Int64}}},reader::FASTX.FASTA.Reader{})
-    clengths = cflength(reader)
-    rlength = length(reader)
-    PlotQueryMatches(matches,clengths,rlength)
+matches is the dictionary returned by exactMatch() from the original reader
+
+plot the locations along the genome where an exact match was found.
+"""
+function PlotQueryMatches(matches::Dict{String, Vector{UnitRange{Int64}}}, reader::FASTX.FASTA.Reader)
+    cl = cflength(reader)
+    rlen = readerNTs(reader)
+    PltQueryMatches(matches,rlen,cl)
 end
-#the plotting has to be displayed somehow
 
-@time SlowerPQM(matchess, reader)
+export PlotQueryMatches
 
-## function that does everything by finding matches AND plotting.
-function MatchPlot(q::ExactSearchQuery{typeof(isequal), LongSequence{DNAAlphabet{4}}}, Reader::FASTX.FASTA.Reader{},overlap::Bool)
-    matches = GenomeMatch(q,reader,overlap)
+"""
+function that does everything by finding matches AND plotting. doesnt work lol.
+"""
+function MatchPlot(q::ExactSearchQuery{typeof(isequal), LongSequence{DNAAlphabet{4}}}, Reader::FASTX.FASTA.Reader{}, overlap::Bool)
+    matches = exactMatch(q,reader,overlap)
+    SlowerPQM(matches,reader)
     return matches
-    return SlowerPQM(matches,reader)
 end
 
-MatchPlot(query, reader, true)
+export MatchPlots
+
+#MatchPlot(query, reader, true)

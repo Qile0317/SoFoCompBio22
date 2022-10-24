@@ -11,8 +11,3 @@ I kept working on the project after the official last day, titled "Discovery of 
 - Figures: a collection of cool figures generated in the analysis that didnt make it to the paper due to the word limit.
 - AnalysisScripts: collection of scripts (except Vsearch commands) described in my methods section that used to process the rep-seq data.
 - UpcomingPackageSRC: collection of other scripts that might end up in the package, most notably including the exact query matching algorithm. THe most important VHH gene finder algorithm (named GMA) is not uploaded there.
-
-# Acknowledgements
-Massive thanks to my amazing supervisor Benjamin Murrell who was very dedicated, patient, educative, kind, funny, .. the list goes on. Allround amazing person. 
-
-Also the organizers of SoFo: Gerald McInerney, Claudia Kutter, among others and the institute for a generous stipend and lots of free snacks and unlimited access to the BioMedicum at KI solna.

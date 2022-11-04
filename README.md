@@ -3,11 +3,12 @@ If you miraculously came here from my physical copy of my research report, hi! H
 
 If you stumbled upon this repo you may be confused. SoFoCompBio is abbreviation for "SOmmarFOrskarskola i berakningsbiologi och bioinformatik" which is a computational biology research internship at karolinska institutet, and I had the pleasure of attending its first iteration in the summer of 2022 among 5 students picked nationally in Sweden, at the Karlsson Hedestam/Murrell Lab. I was additionally even more fortunate to be accepted to the "sommarforskaskola med biomedicinskt inriktning, " karolinska institutets's long-running wet lab summer research program. This allowed me the exclusive opportunity to conduct a joint wet-lab & computational research project.
 
-I kept working on the project after the official last day, titled "Discovery of novel camelid immunoglobulin alleles." With several potential co-author publications in the future so unfortunately not a whole lot can be put on the internet here. However, the project was about progressing the camelid germline VHH repertoire through NGS of PBMC mRNA samples from a huarizo and a computational genome mining algorithm.
+The project was about progressing the camelid germline VHH repertoire through NGS of PBMC mRNA samples from a huarizo and a computational genome mining algorithm.
+
+The genome mining algorithm has been uploaded as a preliminary package at https://github.com/Qile0317/KmerGMA.jl
 
 # Overview of the Repo
 
 - Data： some of the sequence data used in the paper that werent too large in filesize. 
 - Figures: a collection of cool figures generated in the analysis that didnt make it to the paper due to the word limit.
 - AnalysisScripts: collection of scripts (except Vsearch commands) described in my methods section that used to process the rep-seq data.
-- UpcomingPackageSRC: collection of other scripts that might end up in the package, most notably including the exact query matching algorithm. THe most important VHH gene finder algorithm (named GMA) is not uploaded there.

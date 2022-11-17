@@ -7,6 +7,37 @@ The project was about progressing the camelid germline VHH repertoire through NG
 
 The genome mining algorithm has been uploaded as a preliminary package at https://github.com/Qile0317/KmerGMA.jl
 
+# Project abstract - (Project is unfinished)
+
+The alpaca adaptive immune system partially produce heavy
+chain only antibodies, characterized by variable and constant
+regions referred to as VHH and CHH. Procurement of a com-
+prehensive and diverse alpaca VHH gene repertoire is essential
+for the understanding of B cell biology and has numerous ad-
+vantages and benefits in therapeutics and research via usage
+of alpaca nanobodies. However, the full repertoire is far from
+complete. Here, we contribute to the repertoire via the creation
+and execution of a modified 5’RACE protocol for next genera-
+tion sequencing of both VHH and conventional VH mRNA tran-
+scripts from a huarizo (Vicugna pacos × lama glama). The re-
+sulting sequenced repertoire revealed over 600 thousand high
+quality VDJ & VHH transcripts, including 300 thousand IgM
+transcripts that can be processed in subsequent studies with
+germline inference tools and experimental verification. Rudi-
+mentary phylogenetic and V-gene assignment analyses pointed
+strongly at the existence of novel germline alleles in our se-
+quenced repertoire compared to the IMGT databse, and sub-
+sequent analyses suggested a strong correlation of isotype fre-
+quency to presence of nanobody hallmark mutations. Addition-
+ally, we propose a novel, swift genome mining algorithm for V
+gene discovery. Our unoptimized Julia implementation of the
+algorithm was applied over camelid V gene loci and the Vic-
+Pac3.2 full coverage alpaca genome and successfully found both
+exact and approximal matches in linear time. Conclusively, our
+study utilized 2 approaches to successfully progress the current
+alpaca V gene repertoire to completion with high improvement
+potential
+
 # Overview of the Repo
 
 - Data： some of the sequence data used in the paper that werent too large in filesize. 
